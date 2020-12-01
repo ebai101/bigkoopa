@@ -1,7 +1,4 @@
-turtle = nil
-
 local SLOT_COUNT = 16
-local d = 1
 local width, depth = 10, 10
 if (#arg == 3) then
   width = tonumber(arg[1])
@@ -30,7 +27,7 @@ DROPPED_ITEMS = {
   'forestry:apatite'
 }
 
-local function dropItems()
+function dropItems()
   print("Purging Inventory...")
   for slot = 1, SLOT_COUNT, 1 do
     local item = turtle.getItemDetail(slot)
@@ -46,7 +43,7 @@ local function dropItems()
   end
 end
 
-local function checkFuel()
+function checkFuel()
   turtle.select(1)
   if(turtle.getFuelLevel() < 50) then
     print('attempting refuel')
@@ -61,7 +58,7 @@ local function checkFuel()
   return true
 end
 
-local function nextCol(col)
+function nextCol(col)
   if col % 2 == 1 then
     turtle.turnRight()
     digForward()
@@ -73,8 +70,8 @@ local function nextCol(col)
   end
 end
 
-local function digForward()
-  if turtle.detect() then 
+function digForward()
+  if turtle.detect() then
     turtle.dig()
     turtle.forward()
   end
@@ -82,7 +79,7 @@ local function digForward()
   if turtle.detectDown() then turtle.digDown() end
 end
 
-local function main()
+function main()
   for col = 1, width do
     for row = 1, depth - 1 do
       if not checkFuel() then
