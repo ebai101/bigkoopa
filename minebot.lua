@@ -80,6 +80,7 @@ function digForward()
 end
 
 function main()
+  if checkFuel() then digForward() end
   for col = 1, width do
     for row = 1, depth - 1 do
       if not checkFuel() then
