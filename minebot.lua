@@ -80,8 +80,15 @@ function digForward()
 end
 
 function main()
-  if checkFuel() then digForward() end
-  for col = 1, width do
+  if checkFuel() then
+    turtle.turnLeft()
+    turtle.forward()
+    turtle.turnRight()
+  else
+    print('out of fuel')
+    return
+  end
+  for col = 0, width do
     for row = 1, depth - 1 do
       if not checkFuel() then
         print('out of fuel')
