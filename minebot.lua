@@ -96,3 +96,4 @@ local function main()
   end
   print('done!')
 end
+main()
