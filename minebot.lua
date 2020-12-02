@@ -1,8 +1,8 @@
 local SLOT_COUNT = 16
 local width, depth = 30, 30
-if (#arg == 2) then
-  width = tonumber(arg[1])
-  depth = tonumber(arg[2])
+if (#arg == 4) then
+  width = tonumber(arg[3])
+  depth = tonumber(arg[4])
 else
   print('invalid size given, defaulting to 30x30')
 end
