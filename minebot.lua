@@ -77,7 +77,7 @@ function digForward()
   if turtle.detectDown() then turtle.digDown() end
 end
 
-local function getEnderIndex()
+function getEnderIndex()
   for slot = 1, SLOT_COUNT, 1 do
     local item = turtle.getItemDetail(slot)
     if(item ~= nil) then
