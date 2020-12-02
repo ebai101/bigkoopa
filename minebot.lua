@@ -77,6 +77,39 @@ function digForward()
   if turtle.detectDown() then turtle.digDown() end
 end
 
+local function getEnderIndex()
+  for slot = 1, SLOT_COUNT, 1 do
+    local item = turtle.getItemDetail(slot)
+    if(item ~= nil) then
+      if(item["name"] == "enderstorage:ender_storage") then
+        return slot
+      end
+    end
+  end
+  return nil
+end
+
+function manageInventory()
+  dropItems()
+  local index = getEnderIndex()
+  if(index ~= nil) then
+    turtle.select(index)
+    turtle.digUp()
+    turtle.placeUp()
+  end
+  -- Chest is now deployed
+  for slot = 1, SLOT_COUNT, 1 do
+    local item = turtle.getItemDetail(slot)
+    if(item ~= nil) then
+      if(item["name"] ~= "minecraft:coal_block" and item["name"] ~= "minecraft:coal") then
+        turtle.select(slot)
+        turtle.dropUp()
+      end
+    end
+  end
+  turtle.digUp()
+end
+
 function main()
   if checkFuel() then
     turtle.turnLeft()
@@ -96,7 +129,9 @@ function main()
       print(string.format("Row: %d   Col: %d", row, col))
     end
     if col ~= width then nextCol(col) end
+    manageInventory()
   end
   print('done!')
 end
+
 main()
