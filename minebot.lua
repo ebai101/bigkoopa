@@ -113,7 +113,7 @@ end
 function main()
   if checkFuel() then
     turtle.turnLeft()
-    turtle.forward()
+    digForward()
     turtle.turnRight()
   else
     print('out of fuel')
@@ -128,7 +128,7 @@ function main()
       digForward()
       print(string.format("Row: %d   Col: %d", row, col))
     end
-    if col ~= width then nextCol(col) end
+    if col ~= width + 1 then nextCol(col) end
     manageInventory()
   end
   print('done!')
