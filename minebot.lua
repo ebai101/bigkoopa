@@ -71,10 +71,8 @@ function nextCol(col)
 end
 
 function digForward()
-  if turtle.detect() then
-    turtle.dig()
-    turtle.forward()
-  end
+  if turtle.detect() then turtle.dig() end
+  turtle.forward()
   if turtle.detectUp() then turtle.digUp() end
   if turtle.detectDown() then turtle.digDown() end
 end
@@ -88,7 +86,7 @@ function main()
     print('out of fuel')
     return
   end
-  for col = 0, width do
+  for col = 1, width + 1 do
     for row = 1, depth - 1 do
       if not checkFuel() then
         print('out of fuel')
