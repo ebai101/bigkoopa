@@ -1,10 +1,10 @@
 local SLOT_COUNT = 16
-local width, depth = 10, 10
-if (#arg == 3) then
+local width, depth = 30, 30
+if (#arg == 2) then
   width = tonumber(arg[1])
   depth = tonumber(arg[2])
 else
-  print('invalid size given, defaulting to 10x10')
+  print('invalid size given, defaulting to 30x30')
 end
 
 DROPPED_ITEMS = {
