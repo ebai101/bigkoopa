@@ -1,5 +1,0 @@
-central web server (irl) that acts as a command center
-communicates with turtles over websockets
-can effectively manage the swarm of mining turtles
-
-turtle lua program is essentially an API for the web server to use 
