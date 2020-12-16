@@ -1,11 +1,5 @@
 local SLOT_COUNT = 16
 local width, depth = 30, 30
-if (#arg == 4) then
-  width = tonumber(arg[3])
-  depth = tonumber(arg[4])
-else
-  print('invalid size given, defaulting to 30x30')
-end
 
 DROPPED_ITEMS = {
   'minecraft:stone',
@@ -27,7 +21,7 @@ DROPPED_ITEMS = {
   'forestry:apatite'
 }
 
-function dropItems()
+local function dropItems()
   print("Purging Inventory...")
   for slot = 1, SLOT_COUNT, 1 do
     local item = turtle.getItemDetail(slot)
@@ -43,7 +37,7 @@ function dropItems()
   end
 end
 
-function checkFuel()
+local function checkFuel()
   turtle.select(1)
   if(turtle.getFuelLevel() < 50) then
     print('attempting refuel')
@@ -58,7 +52,14 @@ function checkFuel()
   return true
 end
 
-function nextCol(col)
+local function digForward()
+  if turtle.detect() then turtle.dig() end
+  turtle.forward()
+  if turtle.detectUp() then turtle.digUp() end
+  if turtle.detectDown() then turtle.digDown() end
+end
+
+local function nextCol(col)
   if col % 2 == 1 then
     turtle.turnRight()
     digForward()
@@ -70,14 +71,7 @@ function nextCol(col)
   end
 end
 
-function digForward()
-  if turtle.detect() then turtle.dig() end
-  turtle.forward()
-  if turtle.detectUp() then turtle.digUp() end
-  if turtle.detectDown() then turtle.digDown() end
-end
-
-function getEnderIndex()
+local function getEnderIndex()
   for slot = 1, SLOT_COUNT, 1 do
     local item = turtle.getItemDetail(slot)
     if(item ~= nil) then
@@ -89,7 +83,7 @@ function getEnderIndex()
   return nil
 end
 
-function manageInventory()
+local function manageInventory()
   dropItems()
   local index = getEnderIndex()
   if(index ~= nil) then
@@ -110,28 +104,25 @@ function manageInventory()
   turtle.digUp()
 end
 
-function main()
-  if checkFuel() then
-    turtle.turnLeft()
-    digForward()
-    turtle.turnRight()
-  else
-    print('out of fuel')
-    return
-  end
-  for col = 1, width + 1 do
-    for row = 1, depth - 1 do
-      if not checkFuel() then
-        print('out of fuel')
-        return
-      end
-      digForward()
-      print(string.format("Row: %d   Col: %d", row, col))
-    end
-    if col ~= width + 1 then nextCol(col) end
-    manageInventory()
-  end
-  print('done!')
+-- main
+if checkFuel() then
+  turtle.turnLeft()
+  digForward()
+  turtle.turnRight()
+else
+  print('out of fuel')
+  return
 end
-
-main()
+for col = 1, width + 1 do
+  for row = 1, depth - 1 do
+    if not checkFuel() then
+      print('out of fuel')
+      return
+    end
+    digForward()
+    print(string.format("row: %02d col: %02d", row, col))
+  end
+  if col ~= width + 1 then nextCol(col) end
+  manageInventory()
+end
+print('done!')
