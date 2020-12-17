@@ -1,0 +1,102 @@
+local struct = require 'struct'
+
+local shouldStop = false
+local sock = http.websocket('ws://localhost:8765')
+
+local encoding = {
+    {'craft', turtle.craft},
+    {'forward', turtle.forward},
+    {'back', turtle.back},
+    {'up', turtle.up},
+    {'down', turtle.down},
+    {'turnLeft', turtle.turnLeft},
+    {'turnRight', turtle.turnRight},
+    {'select', turtle.select},
+    {'getSelectedSlot', turtle.getSelectedSlot},
+    {'getItemCount', turtle.getItemCount},
+    {'getItemSpace', turtle.getItemSpace},
+    {'getItemDetail', turtle.getItemDetail},
+    {'equipLeft', turtle.equipLeft},
+    {'equipRight', turtle.equipRight},
+    {'attack', turtle.attack},
+    {'attackUp', turtle.attackUp},
+    {'attackDown', turtle.attackDown},
+    {'dig', turtle.dig},
+    {'digUp', turtle.digUp},
+    {'digDown', turtle.digDown},
+    {'place', turtle.place},
+    {'placeUp', turtle.placeUp},
+    {'placeDown', turtle.placeDown},
+    {'detect', turtle.detect},
+    {'detectUp', turtle.detectUp},
+    {'detectDown', turtle.detectDown},
+    {'inspect', turtle.inspect},
+    {'inspectUp', turtle.inspectUp},
+    {'inspectDown', turtle.inspectDown},
+    {'compare', turtle.compare},
+    {'compareUp', turtle.compareUp},
+    {'compareDown', turtle.compareDown},
+    {'compareTo', turtle.compareTo},
+    {'drop', turtle.drop},
+    {'dropUp', turtle.dropUp},
+    {'dropDown', turtle.dropDown},
+    {'suck', turtle.suck},
+    {'suckUp', turtle.suckUp},
+    {'suckDown', turtle.suckDown},
+    {'refuel', turtle.refuel},
+    {'getFuelLevel', turtle.getFuelLevel},
+    {'getFuelLimit', turtle.getFuelLimit},
+    {'transferTo', turtle.transferTo},
+    {'diskIsPresent', disk.isPresent},
+    {'diskHasData', disk.hasData},
+    {'diskGetMountPath', disk.getMountPath},
+    {'diskSetLabel', disk.setLabel},
+    {'diskGetLabel', disk.getLabel},
+    {'diskGetID', disk.getID},
+    {'diskHasAudio', disk.hasAudio},
+    {'diskGetAudioTitle', disk.getAudioTitle},
+    {'diskPlayAudio', disk.playAudio},
+    {'diskStopAudio', disk.stopAudio},
+    {'diskEject', disk.eject},
+    {'gpsLocate', gps.locate},
+    {'peripheralIsPresent', peripheral.isPresent},
+    {'peripheralGetType', peripheral.getType},
+    {'peripheralGetMethods', peripheral.getMethods},
+    {'peripheralCall', peripheral.call},
+    {'peripheralWrap', peripheral.wrap},
+    {'peripheralFind', peripheral.find},
+    {'peripheralGetNames', peripheral.getNames},
+    {'rednetOpen', rednet.open},
+    {'rednetClose', rednet.close},
+    {'rednetSend', rednet.send},
+    {'rednetBroadcast', rednet.broadcast},
+    {'rednetReceive', rednet.receive},
+    {'rednetIsOpen', rednet.isOpen},
+    {'rednetHost', rednet.host},
+    {'rednetUnhost', rednet.unhost},
+    {'rednetLookup', rednet.lookup},
+    {'rednetRun', rednet.run},
+    {'redstoneGetSides', redstone.getSides},
+    {'redstoneGetInput', redstone.getInput},
+    {'redstoneSetOutput', redstone.setOutput},
+    {'redstoneGetOutput', redstone.getOutput},
+    {'redstoneGetAnalogInput', redstone.getAnalogInput},
+    {'redstoneSetAnalogOutput', redstone.setAnalogOutput},
+    {'redstoneGetAnalogOutput', redstone.getAnalogOutput},
+    {'redstoneGetBundledInput', redstone.getBundledInput},
+    {'redstoneGetBundledOutput', redstone.getBundledOutput},
+    {'redstoneSetBundledOutput', redstone.setBundledOutput},
+    {'redstoneTestBundledInput', redstone.testBundledInput},
+}
+
+local function processMessage(message)
+    local data = struct.unpack('BHHs', message)
+    print(data)
+end
+
+sock.send('connected')
+while not shouldStop do
+    local message = sock.receive()
+    local response = processMessage(message)
+    if not shouldStop then sock.send(response) end
+end
