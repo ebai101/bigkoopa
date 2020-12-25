@@ -2,36 +2,22 @@
 
 import asyncio
 import websockets
-import threading
 import sys
 import http.server
 import socketserver
 
-import manager
+import turtleswarm
 
 
 class WSServer:
 
-    addr = 'localhost'
-    port = 42069
-    incoming = asyncio.Queue()
-    manager = manager.TurtleManager()
+    def __init__(self):
+        self.addr = 'localhost'
+        self.port = 42069
+        self.outgoing = asyncio.Queue()
+        self.manager = turtleswarm.TurtleManager()
 
-    async def get_message(self):
-        msg_in = await self._ws.recv()
-        await self.incoming.put(msg_in)
-
-    async def send_message(self, message):
-        await self._ws.send(message)
-
-    async def consume(self):
-        msg = await self.incoming.get()
-        self.manager.parse_turtle_response(msg)
-
-    async def produce(self):
-        msg_out = await self.manager.outgoing.get()
-        return msg_out
-
+    # opens socket on addr/port and handles messages with handler
     def serve_forever(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -39,33 +25,31 @@ class WSServer:
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().run_forever()
 
-    async def handler(self, websocket, path):
-        loop = asyncio.get_event_loop()
-        self._ws = websocket
+    async def consumer_handler(self, websocket, path):
+        async for message in websocket:
+            await self.manager.ingest(message)
 
+    async def producer_handler(self, websocket, path):
         while True:
-            listener_task = asyncio.ensure_future(self.get_message())
-            producer_task = asyncio.ensure_future(self.produce())
-            done, pending = await asyncio.wait(
-                [listener_task, producer_task],
-                return_when=asyncio.FIRST_COMPLETED)
+            message = await self.outgoing.get()
+            await websocket.send(message)
 
-            if listener_task in done:
-                await self.consume()
-            else:
-                listener_task.cancel()
-
-            if producer_task in done:
-                msg_to_send = producer_task.result()
-                await self.send_message(msg_to_send)
-            else:
-                producer_task.cancel()
+    async def handler(self, websocket, path):
+        consumer_task = asyncio.ensure_future(
+            self.consumer_handler(websocket, path))
+        producer_task = asyncio.ensure_future(
+            self.producer_handler(websocket, path))
+        done, pending = await asyncio.wait([consumer_task, producer_task],
+                                           return_when=asyncio.FIRST_COMPLETED)
+        for task in pending:
+            task.cancel()
 
 
 class DLServer:
 
-    _addr = 'localhost'
-    _port = 42070
+    def __init__(self):
+        self.addr = 'localhost'
+        self.port = 42070
 
     class Handler(http.server.SimpleHTTPRequestHandler):
 
@@ -74,28 +58,11 @@ class DLServer:
 
     def serve_forever(self):
         socketserver.TCPServer.allow_reuse_address = True
-        with socketserver.TCPServer((self._addr, self._port),
+        with socketserver.TCPServer((self.addr, self.port),
                                     self.Handler) as httpd:
-            print('serving Lua files at http://%s:%d' %
-                  (self._addr, self._port))
+            print('serving Lua files at http://%s:%d' % (self.addr, self.port))
             httpd.serve_forever()
 
 
-def repl():
-    print(input('> '))
-
-
 if __name__ == '__main__':
-    wss = WSServer()
-    dls = DLServer()
-    wss_t = threading.Thread(target=wss.serve_forever, daemon=True)
-    dls_t = threading.Thread(target=dls.serve_forever, daemon=True)
-    wss_t.start()
-    dls_t.start()
-
-    while True:
-        try:
-            repl()
-        except KeyboardInterrupt:
-            asyncio.get_event_loop().stop()
-            sys.exit()
+    WSServer().serve_forever()
