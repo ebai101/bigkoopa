@@ -1,5 +1,32 @@
 local json = require('json')
 
+
+local function doEval(obj)
+	local func = loadstring(obj['data'])
+	local result = func()
+	return json.encode({
+			turtle_id = obj.turtle_id,
+			type = 'eval_r',
+			data = result,
+			nonce = obj.nonce
+		})
+end
+
+
+local function doWakeup(obj)
+	local info = {
+		comupterId = os.getComputerID(),
+		location = { gps.locate() }
+	}
+	return json.encode({
+			turtle_id = obj.turtle_id,
+			type = 'wakeup_r',
+			data = info,
+			nonce = obj.nonce
+		})
+end
+
+
 local function websocketLoop()
 	local ws, err = http.websocket('localhost:42069')
 
@@ -18,9 +45,9 @@ local function websocketLoop()
 
 			local obj = json.decode(message)
 			if obj.type == 'eval' then
-				local func = loadstring(obj['function'])
-				local result = func()
-				ws.send(json.encode({data=result, nonce=obj.nonce}))
+				ws.send(doEval(obj))
+			elseif obj.type == 'wakeup' then
+				ws.send(doWakeup(obj))
 			end
 		end
 	end
@@ -28,6 +55,7 @@ local function websocketLoop()
 		ws.close()
 	end
 end
+
 
 while true do
 	local status, res = pcall(websocketLoop)
@@ -39,6 +67,6 @@ while true do
 		break
 	end
 
-	print('sleeping!')
+	print('attempting restart in 5 seconds')
 	os.sleep(5)
 end
