@@ -1,9 +1,9 @@
-import turtleswarm
+from src.api import TurtleAPI as Turtle
 
-turtle = turtleswarm.TurtleSwarm()
+t = Turtle()
 
 for i in range(2):
-    turtle.forward()
-    turtle.up()
-    turtle.back()
-    turtle.down()
+    t.forward()
+    t.up()
+    t.back()
+    t.down()
