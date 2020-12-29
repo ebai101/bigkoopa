@@ -9,9 +9,9 @@ t = TurtleAPI(swarm)
 #     t.up()
 #     t.back()
 #     t.down()
-t.eval('os.getComputerID()')
-t.eval('os.sleep(1)')
+
 t.eval('1 + 2')
+t.forward()
 
 # call this to start the program
 swarm.run()

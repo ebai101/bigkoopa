@@ -4,6 +4,7 @@ import json
 import base64
 import asyncio
 import websockets
+from pprint import pprint as pp
 
 
 # asyncio input prompt from stackoverflow
@@ -22,6 +23,13 @@ class Prompt:
         return (await self.q.get()).rstrip('\n')
 
 
+# exception for errors returned from the turtle
+class TurtleEvalError(Exception):
+
+    def __init__(self, message):
+        super().__init__(message)
+
+
 # websockets server that communicates with turtles and manages connections
 class TurtleSwarm:
 
@@ -32,8 +40,7 @@ class TurtleSwarm:
         self.commands: list[str] = []
         self.response_map: dict['str', asyncio.Queue] = {}
 
-# generates a nonce to uniquely identify packets
-
+    # generates a nonce to uniquely identify packets
     def __generate_nonce(self) -> str:
         return base64.b64encode(os.urandom(8), altchars=b'-_').decode('utf-8')
 
@@ -45,6 +52,16 @@ class TurtleSwarm:
     # unregister a turtle client
     async def __unregister(self, websocket):
         self.turtles.remove(websocket)
+
+    # prints a turtle response packet
+    # if the status was an error, raise a TurtleEvalError
+    def __print_turtle_response(self, res):
+        # pp(res)
+        if not res['status']:
+            raise TurtleEvalError(res['result'])
+        print(
+            f"turtle {res['t_id']}: ran {res['command'].replace('return ','')}, returned {res['result']}"
+        )
 
     # constructs a packet and sends it, then awaits the response
     # returns the response packet
@@ -60,9 +77,10 @@ class TurtleSwarm:
         self.response_map[packet['nonce']] = asyncio.Queue()
         await websocket.send(p)
         res = await self.response_map[packet['nonce']].get()
-        print(
-            f"turtle {res['t_id']} ran {res['command'].replace('return ', '')}: returned {res['result']}"
-        )
+        self.response_map.pop(packet['nonce'])
+
+        # print the response
+        self.__print_turtle_response(res)
 
     # worker task for each turtle
     # sends all turtle commands in the proper order
@@ -112,22 +130,31 @@ class TurtleAPI:
     def __init__(self, swarm: TurtleSwarm):
         self.swarm = swarm
 
-    # moves the turtle forward one block
+# TURTLE FUNCTIONS #
+
     def forward(self):
+        # moves the turtle forward one block
         self.swarm.commands.append('turtle.forward()')
 
-    # moves the turtle back one block
     def back(self):
+        # moves the turtle back one block
         self.swarm.commands.append('turtle.back()')
 
-    # moves the turtle up one block
     def up(self):
+        # moves the turtle up one block
         self.swarm.commands.append('turtle.up()')
 
-    # moves the turtle down one block
     def down(self):
+        # moves the turtle down one block
         self.swarm.commands.append('turtle.down()')
 
-    # evaluates an arbitrary lua command
+
+# EXTENDED API FUNCTIONS #
+
     def eval(self, cmd):
+        # evaluates an arbitrary lua command
         self.swarm.commands.append(cmd)
+
+    def get_swarm_size(self):
+        # returns the number of turtles in the swarm
+        return len(self.swarm.turtles)
