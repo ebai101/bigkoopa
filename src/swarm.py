@@ -29,34 +29,46 @@ class TurtleSwarm:
         self.addr = 'localhost'
         self.port = 42069
         self.turtles = set()
-        self.commands: list[dict['str', 'str']] = []
+        self.commands: list[str] = []
         self.response_map: dict['str', asyncio.Queue] = {}
+
+# generates a nonce to uniquely identify packets
+
+    def __generate_nonce(self) -> str:
+        return base64.b64encode(os.urandom(8), altchars=b'-_').decode('utf-8')
 
     # register a turtle client
     async def __register(self, websocket):
         self.turtles.add(websocket)
-        # TODO: add registration packet to get computer id
         print('found turtle')
 
     # unregister a turtle client
     async def __unregister(self, websocket):
         self.turtles.remove(websocket)
 
-    # send a TurtlePacket and wait for a response
-    async def send_packet(self, websocket, packet: dict):
+    # constructs a packet and sends it, then awaits the response
+    # returns the response packet
+    async def run_command(self, websocket, command: str):
+        # construct packet
+        packet = {
+            'command': f'return {command}',
+            'nonce': self.__generate_nonce()
+        }
+        p = json.dumps(packet)
+
+        # send and await response
         self.response_map[packet['nonce']] = asyncio.Queue()
-
-        p = json.dumps(packet).encode('utf-8')
-        print(repr(p))
-
         await websocket.send(p)
-        return await self.response_map[packet['nonce']].get()
+        res = await self.response_map[packet['nonce']].get()
+        print(
+            f"turtle {res['t_id']} ran {res['command'].replace('return ', '')}: returned {res['result']}"
+        )
 
     # worker task for each turtle
     # sends all turtle commands in the proper order
     async def turtle_worker(self, turtle):
         for command in self.commands:
-            await self.send_packet(turtle, command)
+            await self.run_command(turtle, command)
 
     # spawns a turtle worker for each task
     async def spawn_turtle_workers(self):
@@ -66,11 +78,6 @@ class TurtleSwarm:
         for t in tasks:
             await t
 
-    # adds a command to the command list
-    # called from a TurtleAPI instance
-    def add_command(self, command: dict[str, str]):
-        self.commands.append(command)
-
     # handles incoming messages
     # searches response_map for a matching nonce and puts the response in the queue
     async def handler(self, websocket, path: str):
@@ -79,9 +86,10 @@ class TurtleSwarm:
             async for packet in websocket:
                 p = json.loads(packet)
                 if p['nonce'] in self.response_map:
-                    self.response_map[p['nonce']].put(p)
+                    # delivers the response packet to the proper queue
+                    await self.response_map[p['nonce']].put(p)
         except:
-            self.__unregister(websocket)
+            await self.__unregister(websocket)
 
     def run(self):
         # set up server
@@ -92,8 +100,9 @@ class TurtleSwarm:
 
         # start
         loop.run_until_complete(start_server)
-        loop.run_until_complete(
-            prompt('started server, waiting for connections...'))
+        print('starting server, waiting for connections...')
+        loop.run_until_complete(prompt('press enter to run'))
+        print('running program...')
         loop.run_until_complete(self.spawn_turtle_workers())
 
 
@@ -103,32 +112,22 @@ class TurtleAPI:
     def __init__(self, swarm: TurtleSwarm):
         self.swarm = swarm
 
-    def __generate_nonce(self) -> str:
-        return base64.b64encode(os.urandom(8), altchars=b'-_').decode('utf-8')
-
+    # moves the turtle forward one block
     def forward(self):
-        self.swarm.add_command({
-            'data': 'return turtle.forward()',
-            'nonce': self.__generate_nonce()
-        })
+        self.swarm.commands.append('turtle.forward()')
 
+    # moves the turtle back one block
     def back(self):
-        self.swarm.add_command({
-            'data': 'return turtle.back()',
-            'nonce': self.__generate_nonce()
-        })
+        self.swarm.commands.append('turtle.back()')
 
+    # moves the turtle up one block
     def up(self):
-        self.swarm.add_command({
-            'data': 'return turtle.up()',
-            'nonce': self.__generate_nonce()
-        })
+        self.swarm.commands.append('turtle.up()')
 
+    # moves the turtle down one block
     def down(self):
-        self.swarm.add_command({
-            'data': 'return turtle.down()',
-            'nonce': self.__generate_nonce()
-        })
+        self.swarm.commands.append('turtle.down()')
 
-    def getComputerId(self):
-        self.swarm.add_command({})
+    # evaluates an arbitrary lua command
+    def eval(self, cmd):
+        self.swarm.commands.append(cmd)
