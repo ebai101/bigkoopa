@@ -368,7 +368,7 @@ parse = function(str, idx)
   if f then
     return f(str, idx)
   end
-  decode_error(str, idx, "unexpected character '" .. chr .. "'")
+  decode_error(str, idx, string.format("unexpected character %q", chr))
 end
 
 
