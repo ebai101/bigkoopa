@@ -1,6 +1,5 @@
 local json = require('json')
 
-
 local function doEval(obj)
 	local func = loadstring(obj['data'])
 	local result = func()
@@ -62,11 +61,13 @@ while true do
 
 	term.clear()
 	term.setCursorPos(1,1)
+
+	print(status, res)
 	if res == 'Terminated' then
 		print('terminating turtle loop')
 		break
 	end
 
-	print('attempting restart in 5 seconds')
+	print('reconnecting in 5 seconds...')
 	os.sleep(5)
 end

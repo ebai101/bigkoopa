@@ -1,9 +1,15 @@
-from src.api import TurtleAPI as Turtle
+from src.swarm import TurtleAPI, TurtleSwarm
 
-t = Turtle()
+swarm = TurtleSwarm()
+t = TurtleAPI(swarm)
 
-for i in range(2):
-    t.forward()
-    t.up()
-    t.back()
-    t.down()
+
+def dance():
+    for i in range(2):
+        t.forward()
+        t.up()
+        t.back()
+        t.down()
+
+
+swarm.execute(dance)
