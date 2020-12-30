@@ -1,21 +1,38 @@
+import janus
 import asyncio
 import websockets
-from typing import Callable
+import turtleswarm
 
 
-# turtle api functions
-class TurtleAPI:
+class Turtle:
 
-    def __init__(self, websocket: websockets.WebSocketClientProtocol):
+    def __init__(self, swarm: turtleswarm.swarm.TurtleSwarm,
+                 websocket: websockets.WebSocketServerProtocol):
+        self.swarm = swarm
+        self.running = True
         self.websocket = websocket
+        self.cmd_queue = janus.Queue()
+        self.res_queue = janus.Queue()
 
-    # runs a turtle command
     def __run(self, command):
-        task = asyncio.create_task(
-            self.swarm.run_command(self.websocket, command))
-        return asyncio.wait(task)
+        self.cmd_queue.sync_q.put(command)
+        return self.res_queue.sync_q.get()
 
-# TURTLE FUNCTIONS #
+    async def command_loop(self):
+        while self.running:
+            # wait for new command
+            command = await self.cmd_queue.async_q.get()
+            self.cmd_queue.async_q.task_done()
+
+            # send command, wait for result
+            try:
+                res = await self.swarm.run_command(self, command)
+                await self.res_queue.async_q.put(res)
+                self.res_queue.async_q.task_done()
+            except turtleswarm.swarm.TurtleEvalError as e:
+                print(e)
+
+# TURTLE API FUNCTIONS #
 
     def forward(self):
         # moves the turtle forward one block
@@ -33,6 +50,7 @@ class TurtleAPI:
         # moves the turtle down one block
         return self.__run('turtle.down()')
 
+
 # EXTENDED API FUNCTIONS #
 
     def eval(self, cmd):
@@ -42,14 +60,3 @@ class TurtleAPI:
     def get_swarm_size(self):
         # returns the number of turtles in the swarm
         return len(self.swarm.turtles)
-
-
-# callable for a target function for each turtle
-class TurtleProgram:
-
-    def __init__(self, swarm: swarm.TurtleSwarm, target: Callable):
-        self.swarm = swarm
-        self.target = target
-
-    async def run(self, websocket):
-        await self.target(TurtleAPI(self.swarm, websocket))

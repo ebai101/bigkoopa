@@ -4,9 +4,10 @@ import json
 import base64
 import asyncio
 import websockets
-from turtleswarm import api
+import turtleswarm
 from typing import Callable
 from pprint import pprint as pp
+from concurrent.futures import ThreadPoolExecutor
 
 
 # asyncio input prompt from stackoverflow
@@ -38,8 +39,8 @@ class TurtleSwarm:
     def __init__(self, target: Callable):
         self.addr = 'localhost'
         self.port = 42069
-        self.target = api.TurtleProgram(self, target)
-        self.turtles = set()
+        self.target = target
+        self.turtles: set[turtleswarm.api.Turtle] = set()
         self.response_map: dict['str', asyncio.Queue] = {}
 
     # generates a nonce to uniquely identify packets
@@ -47,57 +48,56 @@ class TurtleSwarm:
         return base64.b64encode(os.urandom(8), altchars=b'-_').decode('utf-8')
 
     # register a turtle client
-    async def __register(self, websocket: websockets.WebSocketServerProtocol):
-        self.turtles.add(websocket)
-        print('found turtle')
+    async def __register(self, turtle):
+        self.turtles.add(turtle)
+        print(f'found {len(self.turtles)} turtles')
 
     # unregister a turtle client
-    async def __unregister(self, websocket: websockets.WebSocketServerProtocol):
-        self.turtles.remove(websocket)
+    async def __unregister(self, turtle):
+        self.turtles.remove(turtle)
 
     # handles incoming messages
     # finds the matching nonce and causes the associated run_command call to return
     async def __response_handler(self,
                                  websocket: websockets.WebSocketServerProtocol,
                                  path: str):
-        await self.__register(websocket)
+        await self.__register(turtleswarm.api.Turtle(self, websocket))
         try:
             async for packet in websocket:
                 p = json.loads(packet)
                 if p['nonce'] in self.response_map:
                     # delivers the response packet to the proper queue
-                    await self.response_map[p['nonce']].put(p)
+                    queue = self.response_map[p['nonce']]
+                    await queue.put(p)
+                    self.response_map.pop(p['nonce'])
         except:
-            await self.__unregister(websocket)
+            for t in self.turtles:
+                if t.websocket == websocket:
+                    await self.__unregister(t)
 
-    async def __spawn_turtle_workers(self):
-        tasks = [asyncio.create_task(self.target.run(t)) for t in self.turtles]
-        [await t for t in tasks]
-
-    # constructs a packet and sends it, then awaits the response
-    # returns the response packet
-    async def run_command(self, websocket: websockets.WebSocketClientProtocol,
-                          command: str):
-        packet = {
+    # constructs a packet and sends it to a turtle
+    # returns the command result
+    async def run_command(self, turtle, command: str):
+        cmd_packet = {
             'command': f'return {command}',
             'nonce': self.__generate_nonce()
         }
 
-        # set up a Queue to wait for this packet's response
-        self.response_map[packet['nonce']] = asyncio.Queue()
-        await websocket.send(json.dumps(packet))
+        # map this packets nonce to the turtle, to direct the response to this instance
+        self.response_map[cmd_packet['nonce']] = asyncio.Queue()
 
-        # wait for response
-        res = await self.response_map[packet['nonce']].get()
-        self.response_map.pop(packet['nonce'])  # remove map entry
+        # send and await response
+        await turtle.websocket.send(json.dumps(cmd_packet))
+        res_packet = await self.response_map[cmd_packet['nonce']].get()
 
         # handle the response
-        if not res['status']:
-            raise TurtleEvalError(res['result'])
+        pp(res_packet)
+        if not res_packet['status']:
+            raise TurtleEvalError(res_packet['result'])
         print(
-            f"turtle {res['t_id']}: ran {res['command'].replace('return ','')}, returned {res['result']}"
+            f"turtle {res_packet['t_id']}: ran {res_packet['command'].replace('return ','')}, returned {res_packet['result']}"
         )
-        return res['result']
+        return res_packet['result']
 
     # set the target function to be run on each turtle in the swarm
     def set_target(self, target: Callable):
@@ -116,4 +116,9 @@ class TurtleSwarm:
         print('starting server, waiting for connections...')
         loop.run_until_complete(prompt('press enter to run'))
         print('running program...')
-        loop.run_until_complete(self.__spawn_turtle_workers())
+
+        e = ThreadPoolExecutor()
+        for t in self.turtles:
+            loop.run_in_executor(e, self.target, t)
+        loop.run_until_complete(
+            asyncio.gather(*[t.command_loop() for t in self.turtles]))

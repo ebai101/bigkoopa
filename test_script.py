@@ -1,15 +1,11 @@
 from turtleswarm import swarm
-
-# for i in range(2):
-#     t.forward()
-#     t.up()
-#     t.back()
-#     t.down()
+from random import random
 
 
-def dance(turtle):
-    turtle.eval('1 + 2')
-    turtle.forward()
+def dance(t):
+    t.eval('1 + 2')
+    t.eval(f'os.sleep({random() * 3 + 1})')
+    t.eval('"done!"')
 
 
 # create a new swarm with dance() as the target
