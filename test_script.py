@@ -1,8 +1,4 @@
-from src.swarm import TurtleAPI, TurtleSwarm
-
-# set up the swarm server and the turtle API adapter
-swarm = TurtleSwarm()
-t = TurtleAPI(swarm)
+from turtleswarm import swarm
 
 # for i in range(2):
 #     t.forward()
@@ -10,8 +6,14 @@ t = TurtleAPI(swarm)
 #     t.back()
 #     t.down()
 
-t.eval('1 + 2')
-t.forward()
 
-# call this to start the program
-swarm.run()
+def dance(turtle):
+    turtle.eval('1 + 2')
+    turtle.forward()
+
+
+# create a new swarm with dance() as the target
+s = swarm.TurtleSwarm(dance)
+
+# run the target on all turtles
+s.run()
