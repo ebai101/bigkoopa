@@ -26,13 +26,6 @@ class Prompt:
         return (await self.q.get()).rstrip('\n')
 
 
-# exception for errors returned from the turtle
-class TurtleEvalError(Exception):
-
-    def __init__(self, message):
-        super().__init__(message)
-
-
 # websockets server that communicates with turtles and manages connections
 class TurtleSwarm:
 
@@ -93,7 +86,7 @@ class TurtleSwarm:
         # handle the response
         pp(res_packet)
         if not res_packet['status']:
-            raise TurtleEvalError(res_packet['result'])
+            raise turtleswarm.error.TurtleEvalError(res_packet['result'])
         print(
             f"turtle {res_packet['t_id']}: ran {res_packet['command'].replace('return ','')}, returned {res_packet['result']}"
         )

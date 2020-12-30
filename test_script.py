@@ -1,15 +1,13 @@
-from turtleswarm import swarm
-from random import random
+from turtleswarm import swarm, api
 
 
-def dance(t):
-    t.eval('1 + 2')
-    t.eval(f'os.sleep({random() * 3 + 1})')
-    t.eval('"done!"')
+# this does not make a big hole
+def big_hole(t: api.Turtle):
+    t.forward()
 
 
 # create a new swarm with dance() as the target
-s = swarm.TurtleSwarm(dance)
+s = swarm.TurtleSwarm(big_hole)
 
 # run the target on all turtles
 s.run()
