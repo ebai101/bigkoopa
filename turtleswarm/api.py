@@ -9,18 +9,18 @@ RIGHT = True
 
 class Turtle:
 
-    def __init__(self, swarm: turtleswarm.swarm.TurtleSwarm,
+    def __init__(self, swarm: turtleswarm.swarm.TurtleSwarm, t_id: int,
                  websocket: websockets.WebSocketServerProtocol):
+        self.t_id = t_id
         self.swarm = swarm
         self.running = True
         self.websocket = websocket
         self.cmd_queue = janus.Queue()
         self.res_queue = janus.Queue()
 
-    def __run(self, command: str):
-        self.cmd_queue.sync_q.put(command)
-        result = self.res_queue.sync_q.get()
-        return result
+    def startup(self):
+        # initialization code to run on turtle startup
+        print(f'starting up turtle {self.t_id}')
 
     async def command_loop(self):
         while self.running:
@@ -35,6 +35,19 @@ class Turtle:
                 self.res_queue.async_q.task_done()
             except turtleswarm.error.TurtleEvalError as e:
                 print(e)
+
+# INTERNAL API FUNCTIONS #
+
+    def __run(self, command: str):
+        # internal run command, tracks commands and results as well as turtle stats
+        self.cmd_queue.sync_q.put(command)
+        result = self.res_queue.sync_q.get()
+
+        if result[0] == False:
+            if result[1] == 'Out of fuel':
+                raise turtleswarm.error.TurtleOutOfFuelError()
+
+        return result
 
 # TURTLE API FUNCTIONS #
 

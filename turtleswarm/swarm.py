@@ -42,9 +42,22 @@ class TurtleSwarm:
         return base64.b64encode(os.urandom(8), altchars=b'-_').decode('utf-8')
 
     # register a turtle client
-    async def __register(self, turtle):
+    async def __register(self, websocket: websockets.WebSocketServerProtocol):
+        # get turtle registration info
+        cmd_packet = {
+            'command': 'return os.getComputerID()',
+            'nonce': self.__generate_nonce()
+        }
+        await websocket.send(json.dumps(cmd_packet))
+        res_packet = await websocket.recv()
+        res_data = json.loads(res_packet)
+        t_id = res_data['result'][0]
+
+        # add turtle to swarm
+        turtle = turtleswarm.api.Turtle(self, t_id, websocket)
+
         self.turtles.add(turtle)
-        print(f'found {len(self.turtles)} turtles')
+        print(f'found turtleID {t_id}, {len(self.turtles)} turtle(s) in swarm')
 
     # unregister a turtle client
     async def __unregister(self, turtle):
@@ -55,7 +68,7 @@ class TurtleSwarm:
     async def __response_handler(self,
                                  websocket: websockets.WebSocketServerProtocol,
                                  path: str):
-        await self.__register(turtleswarm.api.Turtle(self, websocket))
+        await self.__register(websocket)
         try:
             async for packet in websocket:
                 p = json.loads(packet)
@@ -115,6 +128,7 @@ class TurtleSwarm:
 
         e = ThreadPoolExecutor(max_workers=self.max_size)
         for t in self.turtles:
+            loop.run_in_executor(e, t.startup)
             loop.run_in_executor(e, self.target, t)
         loop.run_until_complete(
             asyncio.gather(*[t.command_loop() for t in self.turtles]))

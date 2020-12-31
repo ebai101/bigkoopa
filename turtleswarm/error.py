@@ -1,4 +1,11 @@
-# exception for errors returned from the turtle
+# exception for when turtles run out of fuel
+class TurtleOutOfFuelError(Exception):
+
+    def __init__(self):
+        super().__init__()
+
+
+# generic exception for lua errors
 class TurtleEvalError(Exception):
 
     def __init__(self, message):
