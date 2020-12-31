@@ -17,8 +17,6 @@ class Turtle:
     def __run(self, command: str):
         self.cmd_queue.sync_q.put(command)
         result = self.res_queue.sync_q.get()
-        if len(result['response']) == 1:
-            return result[0]
         return result
 
     async def command_loop(self):

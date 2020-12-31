@@ -29,9 +29,10 @@ class Prompt:
 # websockets server that communicates with turtles and manages connections
 class TurtleSwarm:
 
-    def __init__(self, target: Callable):
+    def __init__(self, target: Callable, max_size: int):
         self.addr = 'localhost'
         self.port = 42069
+        self.max_size = max_size
         self.target = target
         self.turtles: set[turtleswarm.api.Turtle] = set()
         self.response_map: dict['str', asyncio.Queue] = {}
@@ -110,7 +111,7 @@ class TurtleSwarm:
         loop.run_until_complete(prompt('press enter to run'))
         print('running program...')
 
-        e = ThreadPoolExecutor()
+        e = ThreadPoolExecutor(max_workers=self.max_size)
         for t in self.turtles:
             loop.run_in_executor(e, self.target, t)
         loop.run_until_complete(
