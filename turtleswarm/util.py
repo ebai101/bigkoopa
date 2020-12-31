@@ -1,6 +1,42 @@
 import turtleswarm
 
 
+# attempts to refuel the turtle using objects from the turtle's inventory
+def refuel_from_inventory(t: turtleswarm.api.Turtle, amount=None) -> bool:
+    fuel_level = t.get_fuel_level()
+    last_slot = t.get_selected_slot()
+
+    # if we don't need fuel, consider it a success
+    if fuel_level == -1:
+        return True
+
+    # if no amount specified, fill as much as possible
+    if amount == None:
+        amount = t.get_fuel_limit()
+
+    while fuel_level < amount:
+        for n in range(1, 17):
+            if t.get_item_count(n) > 0:
+                t.select(n)
+                if t.refuel(1):
+                    # this item is usable fuel, keep refueling
+                    while t.get_item_count(
+                            n) > 0 and t.get_fuel_level() < amount:
+                        t.refuel(1)
+                    if t.get_fuel_level() >= amount:
+                        # fueled up
+                        t.select(last_slot)
+                        return True
+        t.select(last_slot)
+        return False
+    return True
+
+
+# attempts to refuel the turtle from an inventory on a given side
+def refuel_from_side(t: turtleswarm.api.Turtle, side):
+    pass
+
+
 # excavates a hole of dim (x,y,z)
 # dir indicates which direction the turtle will turn (using TurtleAPI.turn()): left is False, right is True
 def excavate(t: turtleswarm.api.Turtle, dim: tuple[int, int, int], dir: bool):
