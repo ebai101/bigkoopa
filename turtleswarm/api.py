@@ -3,6 +3,9 @@ import asyncio
 import websockets
 import turtleswarm
 
+LEFT = False
+RIGHT = True
+
 
 class Turtle:
 
@@ -58,11 +61,11 @@ class Turtle:
         # Try to move the turtle down
         return self.__run('turtle.down()')
 
-    def turnLeft(self) -> bool:
+    def turn_left(self) -> bool:
         # Turn the turtle left
         return self.__run('turtle.turnLeft()')
 
-    def turnRight(self) -> bool:
+    def turn_right(self) -> bool:
         # Turn the turtle right
         return self.__run('turtle.turnRight()')
 
@@ -284,6 +287,18 @@ class Turtle:
 
 
 # ADDITIONAL API FUNCTIONS #
+
+    def turn(self, dir: bool) -> bool:
+        # turn left or right based on a boolean
+        # if dir is False, turn left, otherwise turn right
+        if dir:
+            return self.__run('turtle.turnRight()')
+        return self.__run('turtle.turnLeft()')
+
+    def turn_around(self) -> bool:
+        # turns the turtle left twice, facing it the opposite direction
+        return self.__run('turtle.turnLeft()') and self.__run(
+            'turtle.turnLeft()')
 
     def eval(self, cmd: str):
         # evaluates an arbitrary lua command

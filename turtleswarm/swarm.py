@@ -6,7 +6,6 @@ import asyncio
 import websockets
 import turtleswarm
 from typing import Callable
-from pprint import pprint as pp
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -36,6 +35,7 @@ class TurtleSwarm:
         self.target = target
         self.turtles: set[turtleswarm.api.Turtle] = set()
         self.response_map: dict['str', asyncio.Queue] = {}
+        self.debug = False
 
     # generates a nonce to uniquely identify packets
     def __generate_nonce(self) -> str:
@@ -85,19 +85,21 @@ class TurtleSwarm:
         res_packet = await self.response_map[cmd_packet['nonce']].get()
 
         # handle the response
-        pp(res_packet)
         if not res_packet['status']:
             raise turtleswarm.error.TurtleEvalError(res_packet['result'])
-        print(
-            f"turtle {res_packet['t_id']}: ran {res_packet['command'].replace('return ','')}, returned {res_packet['result']}"
-        )
+        if self.debug:
+            print(
+                f"turtle {res_packet['t_id']}: ran {res_packet['command'].replace('return ','')}, returned {res_packet['result']}"
+            )
         return res_packet['result']
 
     # set the target function to be run on each turtle in the swarm
     def set_target(self, target: Callable):
         self.target = target
 
-    def run(self):
+    def run(self, debug: bool = False):
+        self.debug = debug
+
         # set up server
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

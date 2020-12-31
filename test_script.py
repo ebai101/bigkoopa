@@ -1,53 +1,14 @@
-from turtleswarm import swarm, api
+from turtleswarm import swarm, api, util
 
 
-# this does not make a big hole
-def big_hole(t: api.Turtle):
-    t.select(1)
-    t.suck_up()
-    t.refuel()
-
-    while True:
-        if not t.dig_down():
-            break
-        else:
-            t.down()
-
-        for j in range(3):
-            t.dig()
-            t.forward()
-        t.turnLeft()
-        t.dig()
-        t.forward()
-        t.turnLeft()
-
-        for i in range(3):
-            t.dig()
-            t.forward()
-        t.turnRight()
-        t.dig()
-        t.forward()
-        t.turnRight()
-
-        for i in range(3):
-            t.dig()
-            t.forward()
-        t.turnLeft()
-        t.dig()
-        t.forward()
-        t.turnLeft()
-
-        for i in range(3):
-            t.dig()
-            t.forward()
-        t.turnLeft()
-        for i in range(3):
-            t.forward()
-        t.turnLeft()
+def test(t: api.Turtle):
+    # util.excavate(t, (4, 256, 4), api.LEFT)
+    # util.clear_cave(t, 5, api.LEFT)
+    pass
 
 
 # create a new swarm with big_hole() as the target
-s = swarm.TurtleSwarm(big_hole, 16)
+s = swarm.TurtleSwarm(test, 16)
 
 # run the target on all turtles
-s.run()
+s.run(debug=True)
