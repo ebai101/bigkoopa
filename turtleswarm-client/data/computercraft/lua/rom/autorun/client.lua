@@ -23,7 +23,18 @@ local function loop(ws)
 		-- decode and execute
 		local msg_decoded = json.decode(msg)
 		local status, response = pack(pcall(loadstring(msg_decoded['command'])))
-		if len(response) == 1 then response = response[1] end -- condense single value responses
+
+		-- parse status and response
+		if status == true then
+			if response[1] == false then
+				status = 1
+			else
+				status = 0
+			end
+		else
+			status = -1
+		end
+		if len(response) == 1 then response = response[1] end -- single value responses
 		if response == nil then response = 'None' end
 
 		-- send response

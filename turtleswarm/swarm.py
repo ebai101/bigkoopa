@@ -6,8 +6,8 @@ import pprint
 import logging
 import asyncio
 import websockets
-from typing import Callable
 from turtleswarm import api, error
+from typing import Callable, Union
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -27,18 +27,35 @@ class Prompt:
         return (await self.q.get()).rstrip('\n')
 
 
+# wrapper for turtle task functions to standardize return behavior
+class TurtleTask:
+
+    def __init__(self, target: Callable):
+        self.target = target
+
+    # call the target function on a turtle, return the turtle
+    def __call__(self, turtle: api.Turtle):
+        self.target(turtle)
+        return turtle
+
+
 # websockets server that communicates with turtles and manages connections
 class TurtleSwarm:
 
-    def __init__(self, target: Callable, max_size: int):
+    def __init__(self, target, max_size: int):
 
         # basic setup
         self.addr = 'localhost'
         self.port = 42069
         self.max_size = max_size
-        self.target = target
         self.turtles: set[api.Turtle] = set()
         self.response_map: dict['str', asyncio.Queue] = {}
+
+        # target
+        if isinstance(target, Callable):
+            self.target_func: Callable = target
+        elif isinstance(target, dict):
+            self.target_dict: dict = target
 
         # logging
         self.log = logging.getLogger('swarm')
@@ -74,7 +91,7 @@ class TurtleSwarm:
     async def __unregister(self, turtle: api.Turtle, err: Exception):
         self.turtles.remove(turtle)
         self.log.info(
-            f'turtleID {turtle.t_id} disconnected: {err}, {len(self.turtles)} turtles(s) in swarm'
+            f'turtleID {turtle.t_id} disconnected: {len(self.turtles)} turtles(s) in swarm'
         )
 
     # handles incoming messages
@@ -103,15 +120,20 @@ class TurtleSwarm:
     # worker task for each turtle. sets up the turtle and runs the command loop
     async def turtle_worker(self, turtle: api.Turtle):
         turtle.startup()
-        self.log.debug('starting command loop')
+        self.log.debug(f'starting worker for turtleID {turtle.t_id}')
 
         while turtle.running:
             # wait for new command
             command = await turtle.cmd_queue.async_q.get()
             turtle.cmd_queue.async_q.task_done()
-            self.log.debug(f'command received: {command}')
+
+            if command == '__done__':
+                # turtle task has finished
+                await turtle.websocket.close()
+                return
 
             # send command, wait for result
+            self.log.debug(f'command received: {command}')
             try:
                 res = await self.run_command(turtle, command)
                 await turtle.res_queue.async_q.put(res)
@@ -136,13 +158,9 @@ class TurtleSwarm:
         res_packet = await self.response_map[cmd_packet['nonce']].get()
 
         # handle the response
-        if not res_packet['status']:
+        if res_packet['status'] == -1:
             raise error.TurtleEvalError(res_packet['result'])
         return res_packet
-
-    # set the target function to be run on each turtle in the swarm
-    def set_target(self, target: Callable):
-        self.target = target
 
     # set the debug level for all member turtles
     def set_turtle_log_level(self, level: int):
@@ -152,24 +170,62 @@ class TurtleSwarm:
     def run(self, log_level: int = logging.INFO):
         self.log.setLevel(log_level)
 
-        # set up server
+        # setup
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        exec = ThreadPoolExecutor(max_workers=self.max_size)
         start_server = websockets.serve(self.__response_handler, self.addr,
                                         self.port)
         prompt = Prompt()
+        turtle_workers = {}
 
-        # start
+        # done callback for turtle tasks
+        def __task_done(fut):
+            t: api.Turtle = fut.result()
+            t.shutdown()
+            self.log.info(f'turtle ID {t.t_id} finished')
+
+        # submits a task and adds a worker
+        def __create_task(executor: ThreadPoolExecutor, function: Callable,
+                          turtle: api.Turtle):
+            self.log.info(f'starting target: {function.__name__}')
+            turtle.running = True
+            task = TurtleTask(function)
+            fut = executor.submit(task, turtle)
+            fut.add_done_callback(__task_done)
+            turtle_workers[turtle.t_id] = asyncio.ensure_future(
+                self.turtle_worker(turtle))
+
+        # start listening for turtles
         loop.run_until_complete(start_server)
         self.log.info('starting server, waiting for connections...')
         loop.run_until_complete(prompt('press enter to run'))
         self.log.info('running program...')
-
-        e = ThreadPoolExecutor(max_workers=self.max_size)
         self.set_turtle_log_level(log_level)
 
-        for t in self.turtles:
-            self.log.info(f'starting target: {self.target.__name__}')
-            loop.run_in_executor(e, self.target, t)
-        loop.run_until_complete(
-            asyncio.gather(*[self.turtle_worker(t) for t in self.turtles]))
+        # build worker list and executor tasks
+        try:
+            # distribute single task thru swarm
+            for turtle in self.turtles:
+                __create_task(exec, self.target_func, turtle)
+        except:
+            # distribute individualized tasks
+            if not 'default' in self.target_dict:
+                self.log.warning(
+                    'no default function passed to turtleswarm, only specified turtle IDs will run'
+                )
+            for turtle in self.turtles:
+                if turtle.t_id in self.target_dict:
+                    __create_task(exec, self.target_dict[turtle.t_id], turtle)
+                elif 'default' in self.target_dict:
+                    __create_task(exec, self.target_dict['default'], turtle)
+
+        else:
+            # this should not happen...
+            self.log.error('no target function or dict found!')
+            return False
+
+        # finally, run all the workers
+        loop.run_until_complete(asyncio.gather(*turtle_workers.values()))
+        self.log.info('all done!')
+        return True

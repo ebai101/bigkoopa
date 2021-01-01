@@ -2,6 +2,7 @@ import janus
 import pprint
 import logging
 import asyncio
+import functools
 import websockets
 from typing import Callable
 from turtleswarm import tracking, error
@@ -20,7 +21,7 @@ class Turtle:
 
         # basic setup
         self.t_id = t_id
-        self.running: bool = True
+        self.running: bool = False
         self.websocket = websocket
         self.cmd_queue = janus.Queue()
         self.res_queue = janus.Queue()
@@ -35,8 +36,14 @@ class Turtle:
 
     def startup(self):
         # initialization code to run on turtle startup
-        # TODO: add stuff to do here
+        # TODO: add more stuff to do here
+        self.running = True
         self.log.debug('starting up')
+
+    def shutdown(self):
+        # called when the turtle has finished its task
+        self.running = False
+        self.cmd_queue.sync_q.put('__done__')
 
 # INTERNAL API FUNCTIONS #
 
@@ -51,7 +58,7 @@ class Turtle:
         res_packet = self.res_queue.sync_q.get()
 
         # parse response (TODO: add errors)
-        if res_packet['status'] == True and command in [
+        if res_packet['status'] == 0 and command in [
                 'forward', 'back', 'up', 'down', 'turnLeft', 'turnRight'
         ]:
             self.tracker.process_move(command)
@@ -297,16 +304,23 @@ class Turtle:
         return self.__peripheral('call', side, method, args)
 
     def peripheral_wrap(self, side: str):
-        return self.__build_peripheral_object(self.__peripheral('wrap', side))
+        if not self.__peripheral('isPresent', side):
+            return False
+
+        methods = self.__peripheral('getMethods', side)
+        p_dict = {
+            'type': self.__peripheral('getType', side),
+            'methods': methods
+        }
+        for m in methods:
+            p_dict[m] = functools.partial(self.__peripheral, 'call', side, m)
+
+        return type('Peripheral', (object,), p_dict)
 
     def peripheral_get_names(self) -> list:
         # Returns a table of all the sides that have a peripheral present.
         # If the present peripheral is a wired modem any names of the peripherals that is on the network are also added to the table.
         return self.__peripheral('getNames')
-
-    def __build_peripheral_object(self, peripheral: list):
-        self.log.debug(pprint.pformat(peripheral))
-        return True
 
 
 # ADDITIONAL API FUNCTIONS #

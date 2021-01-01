@@ -2,14 +2,19 @@ import logging
 from turtleswarm import swarm, api, util
 
 
-def test(t: api.Turtle):
-
-    util.refuel_from_chest(t, 32)
-    util.clear_cave(t, 49, api.LEFT)
+def test1(t: api.Turtle):
+    t.turn_left()
 
 
-# create a new swarm with test() as the target
-s = swarm.TurtleSwarm(test, 16)
+def test2(t: api.Turtle):
+    t.turn_right()
 
-# run the target on all turtles
-s.run(log_level=logging.INFO)
+
+def test3(t: api.Turtle):
+    t.turn_around()
+
+
+targets = {3: test1, 2: test2, 'default': test3}
+
+s = swarm.TurtleSwarm(targets, 16)
+s.run(log_level=logging.DEBUG)
