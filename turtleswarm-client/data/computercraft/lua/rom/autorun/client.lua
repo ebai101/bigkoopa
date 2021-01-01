@@ -27,12 +27,14 @@ local function loop(ws)
 		if response == nil then response = 'None' end
 
 		-- send response
-		ws.send(json.encode({
+		local res_packet = {
 					command = msg_decoded['command'],
 					status = status,
 					result = response,
 					nonce = msg_decoded['nonce'],
-				}))
+				}
+		print(msg_decoded['command']:gsub("^return ","")..' -> '..tostring(response))
+		ws.send(json.encode(res_packet))
 	end
 end
 
@@ -44,6 +46,9 @@ if settings.get('turtleswarm.ignore') == true then
 end
 
 while true do
+	term.clear()
+	term.setCursorPos(1,1)
+	print('turtle ID '..os.getComputerID())
 	local ws, ws_err = http.websocket('ws://localhost:42069')
 
 	if ws_err then
@@ -52,12 +57,17 @@ while true do
 	else
 		print('connection established')
 		local loop_status, loop_err = pcall(loop, ws)
+
 		if loop_err then
 			print('websocket loop returned an error: '..loop_err)
 		end
 		ws.close()
 	end
 
-	print('attempting to reconnect in 5 seconds...')
-	os.sleep(5)
+	for i = 1, 5 do
+		term.setCursorPos(1,5)
+		term.clearLine()
+		print('reconnecting in 5 seconds'..string.rep('.', i))
+		os.sleep(1)
+	end
 end
