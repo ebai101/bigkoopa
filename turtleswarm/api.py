@@ -300,6 +300,8 @@ class Turtle:
         return self.__build_peripheral_object(self.__peripheral('wrap', side))
 
     def peripheral_get_names(self) -> list:
+        # Returns a table of all the sides that have a peripheral present.
+        # If the present peripheral is a wired modem any names of the peripherals that is on the network are also added to the table.
         return self.__peripheral('getNames')
 
     def __build_peripheral_object(self, peripheral: list):
