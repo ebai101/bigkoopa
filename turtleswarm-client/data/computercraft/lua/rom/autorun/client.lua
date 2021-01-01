@@ -3,6 +3,13 @@ local function pack(status, ...)
 	return status, { ... }
 end
 
+-- get table length
+local function len(table)
+	local count = 0
+	for _ in pairs(table) do count = count + 1 end
+	return count
+end
+
 -- main websocket loop
 -- recieves a packet, evaluates it and sends a response back
 local function loop(ws)
@@ -16,6 +23,7 @@ local function loop(ws)
 		-- decode and execute
 		local msg_decoded = json.decode(msg)
 		local status, response = pack(pcall(loadstring(msg_decoded['command'])))
+		if len(response) == 1 then response = response[1] end -- condense single value responses
 		if response == nil then response = 'None' end
 
 		-- send response

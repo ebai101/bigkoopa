@@ -51,8 +51,6 @@ class Turtle:
         res_packet = self.res_queue.sync_q.get()
 
         # parse response (TODO: add errors)
-        if len(res_packet['result']) == 1:
-            res_packet['result'] = res_packet['result'][0]
         if res_packet['status'] == True and command in [
                 'forward', 'back', 'up', 'down', 'turnLeft', 'turnRight'
         ]:

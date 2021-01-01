@@ -61,7 +61,7 @@ class TurtleSwarm:
         await websocket.send(json.dumps(cmd_packet))
         res_packet = await websocket.recv()
         res_data = json.loads(res_packet)
-        t_id = res_data['result'][0]
+        t_id = res_data['result']
 
         # add turtle to swarm
         turtle = api.Turtle(t_id, websocket)
