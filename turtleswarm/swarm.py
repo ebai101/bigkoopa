@@ -6,8 +6,8 @@ import pprint
 import logging
 import asyncio
 import websockets
-import turtleswarm
 from typing import Callable
+from turtleswarm import api, error
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -37,7 +37,7 @@ class TurtleSwarm:
         self.port = 42069
         self.max_size = max_size
         self.target = target
-        self.turtles: set[turtleswarm.api.Turtle] = set()
+        self.turtles: set[api.Turtle] = set()
         self.response_map: dict['str', asyncio.Queue] = {}
 
         # logging
@@ -64,14 +64,14 @@ class TurtleSwarm:
         t_id = res_data['result'][0]
 
         # add turtle to swarm
-        turtle = turtleswarm.api.Turtle(self, t_id, websocket)
+        turtle = api.Turtle(t_id, websocket)
 
         self.turtles.add(turtle)
         self.log.info(
             f'added turtleID {t_id}, {len(self.turtles)} turtle(s) in swarm')
 
     # unregister a turtle client
-    async def __unregister(self, turtle, err):
+    async def __unregister(self, turtle: api.Turtle, err: Exception):
         self.turtles.remove(turtle)
         self.log.info(
             f'turtleID {turtle.t_id} disconnected: {err}, {len(self.turtles)} turtles(s) in swarm'
@@ -101,13 +101,27 @@ class TurtleSwarm:
             await self.__unregister(this_turtle[0], err)
 
     # worker task for each turtle. sets up the turtle and runs the command loop
-    async def turtle_worker(self, turtle):
-        turtle.initialize()
-        await turtle.command_loop()
+    async def turtle_worker(self, turtle: api.Turtle):
+        turtle.startup()
+        self.log.debug('starting command loop')
+
+        while turtle.running:
+            # wait for new command
+            command = await turtle.cmd_queue.async_q.get()
+            turtle.cmd_queue.async_q.task_done()
+            self.log.debug(f'command received: {command}')
+
+            # send command, wait for result
+            try:
+                res = await self.run_command(turtle, command)
+                await turtle.res_queue.async_q.put(res)
+                turtle.res_queue.async_q.task_done()
+            except error.TurtleEvalError as e:
+                self.log.error(e)
 
     # constructs a packet and sends it to a turtle
     # returns the command result
-    async def run_command(self, turtle, command: str):
+    async def run_command(self, turtle: api.Turtle, command: str):
         cmd_packet = {
             'command': f'return {command}',
             'nonce': self.__generate_nonce()
@@ -123,8 +137,8 @@ class TurtleSwarm:
 
         # handle the response
         if not res_packet['status']:
-            raise turtleswarm.error.TurtleEvalError(res_packet['result'])
-        return res_packet['result']
+            raise error.TurtleEvalError(res_packet['result'])
+        return res_packet
 
     # set the target function to be run on each turtle in the swarm
     def set_target(self, target: Callable):

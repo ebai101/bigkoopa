@@ -1,8 +1,8 @@
-import turtleswarm
+from turtleswarm import api
 
 
 # attempts to refuel the turtle using objects from the turtle's inventory
-def refuel_from_inventory(t: turtleswarm.api.Turtle, amount=None) -> bool:
+def refuel_from_inventory(t: api.Turtle, amount=None) -> bool:
     fuel_level = t.get_fuel_level()
     last_slot = t.get_selected_slot()
 
@@ -34,7 +34,7 @@ def refuel_from_inventory(t: turtleswarm.api.Turtle, amount=None) -> bool:
 
 # excavates a hole of dim (x,y,z)
 # dir indicates which direction the turtle will turn (using TurtleAPI.turn()): left is False, right is True
-def excavate(t: turtleswarm.api.Turtle, dim: tuple[int, int, int], dir: bool):
+def excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
 
     if dim[0] <= 0 or dim[1] <= 0 or dim[2] <= 0:
         raise ValueError('dimensions must be nonzero positive numbers')
@@ -67,7 +67,7 @@ def excavate(t: turtleswarm.api.Turtle, dim: tuple[int, int, int], dir: bool):
 # clears out a 3-high square cave (dim+1,dim). uses dig, dig_up and dig_down for improved speed
 # intended use is with 4 turtles to produce a cave with dimensions (2*dim+1,2*dim+1)
 # dir indicates which direction the turtle will turn, can be LEFT or RIGHT
-def clear_cave(t: turtleswarm.api.Turtle, dim: int, dir: bool):
+def clear_cave(t: api.Turtle, dim: int, dir: bool):
 
     if dim <= 0:
         raise ValueError('dim must be a nonzero positive number')

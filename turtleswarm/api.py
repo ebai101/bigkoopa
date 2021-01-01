@@ -3,25 +3,28 @@ import pprint
 import logging
 import asyncio
 import websockets
-import turtleswarm
 from typing import Callable
+from turtleswarm import tracking, error
 
 LEFT = False
 RIGHT = True
 
 
+# class to manage a single turtle. contains wrappers for all of the lua turtle API functions,
+# as well as some other lua functions that may be important. these are all called from the
+# user program.
 class Turtle:
 
-    def __init__(self, swarm: turtleswarm.swarm.TurtleSwarm, t_id: int,
+    def __init__(self, t_id: int,
                  websocket: websockets.WebSocketServerProtocol):
 
         # basic setup
         self.t_id = t_id
-        self.swarm = swarm
-        self.running = True
+        self.running: bool = True
         self.websocket = websocket
         self.cmd_queue = janus.Queue()
         self.res_queue = janus.Queue()
+        self.tracker = tracking.TurtleTracker()
 
         # logging
         self.log = logging.getLogger(f'turtle_{t_id}')
@@ -30,26 +33,10 @@ class Turtle:
         ch.setFormatter(fm)
         self.log.addHandler(ch)
 
-    def initialize(self):
+    def startup(self):
         # initialization code to run on turtle startup
         # TODO: add stuff to do here
-        self.log.debug('initializing')
-
-    async def command_loop(self):
-        self.log.debug('starting command loop')
-        while self.running:
-            # wait for new command
-            command = await self.cmd_queue.async_q.get()
-            self.cmd_queue.async_q.task_done()
-            self.log.debug(f'command received: {command}')
-
-            # send command, wait for result
-            try:
-                res = await self.swarm.run_command(self, command)
-                await self.res_queue.async_q.put(res)
-                self.res_queue.async_q.task_done()
-            except turtleswarm.error.TurtleEvalError as e:
-                self.log.error(e)
+        self.log.debug('starting up')
 
 # INTERNAL API FUNCTIONS #
 
@@ -61,12 +48,18 @@ class Turtle:
 
         # send command and block for response
         self.cmd_queue.sync_q.put(command_fmt)
-        result = self.res_queue.sync_q.get()
+        res_packet = self.res_queue.sync_q.get()
 
         # parse response (TODO: add errors)
-        self.log.info(f'{command_fmt} -> {result}')
+        if len(res_packet['result']) == 1:
+            res_packet['result'] = res_packet['result'][0]
+        if res_packet['status'] == True and command in [
+                'forward', 'back', 'up', 'down', 'turnLeft', 'turnRight'
+        ]:
+            self.tracker.process_move(command)
 
-        return result
+        self.log.info(f'{command_fmt} -> {res_packet["result"]}')
+        return res_packet['result']
 
     def __turtle(self, command: str, *args):
         # runs a turtle command
@@ -308,6 +301,9 @@ class Turtle:
     def peripheral_wrap(self, side: str):
         return self.__build_peripheral_object(self.__peripheral('wrap', side))
 
+    def peripheral_get_names(self) -> list:
+        return self.__peripheral('getNames')
+
     def __build_peripheral_object(self, peripheral: list):
         self.log.debug(pprint.pformat(peripheral))
         return True
@@ -329,7 +325,3 @@ class Turtle:
     def eval(self, cmd: str):
         # runs an arbitrary lua command on the turtle. can be dangerous
         return self.__eval(cmd)
-
-    def get_swarm_size(self) -> int:
-        # returns the number of turtles in the swarm
-        return len(self.swarm.turtles)
