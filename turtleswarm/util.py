@@ -32,11 +32,6 @@ def refuel_from_inventory(t: turtleswarm.api.Turtle, amount=None) -> bool:
     return True
 
 
-# attempts to refuel the turtle from an inventory on a given side
-def refuel_from_side(t: turtleswarm.api.Turtle, side):
-    pass
-
-
 # excavates a hole of dim (x,y,z)
 # dir indicates which direction the turtle will turn (using TurtleAPI.turn()): left is False, right is True
 def excavate(t: turtleswarm.api.Turtle, dim: tuple[int, int, int], dir: bool):

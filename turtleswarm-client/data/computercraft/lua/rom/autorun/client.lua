@@ -20,7 +20,6 @@ local function loop(ws)
 
 		-- send response
 		ws.send(json.encode({
-					t_id = os.getComputerID(),
 					command = msg_decoded['command'],
 					status = status,
 					result = response,
