@@ -6,9 +6,10 @@ import pprint
 import logging
 import asyncio
 import websockets
-from turtleswarm import api, error
 from typing import Callable, Union
 from concurrent.futures import ThreadPoolExecutor
+
+from turtleswarm import api, error
 
 
 # asyncio input prompt from stackoverflow

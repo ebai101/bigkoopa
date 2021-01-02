@@ -1,3 +1,5 @@
+argv = {...}
+
 -- pack pcall results into a table
 local function pack(status, ...)
 	return status, { ... }
@@ -53,6 +55,11 @@ end
 -- set this on the command line with "set turtleswarm.ignore true"
 if settings.get('turtleswarm.ignore') == true then
 	print('turtleswarm.ignore set, exiting')
+	return
+end
+
+-- only run the program on turtles, not normal computers
+if not turtle and not argv[1] then
 	return
 end
 
