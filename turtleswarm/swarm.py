@@ -48,15 +48,10 @@ class TurtleSwarm:
         # basic setup
         self.addr = 'localhost'
         self.port = 42069
+        self.target = target
         self.max_size = max_size
         self.turtles: set[api.Turtle] = set()
         self.response_map: dict['str', asyncio.Queue] = {}
-
-        # target
-        if isinstance(target, Callable):
-            self.target_func: Callable = target
-        elif isinstance(target, dict):
-            self.target_dict: dict = target
 
         # logging
         self.log = logging.getLogger('swarm')
@@ -205,28 +200,24 @@ class TurtleSwarm:
         self.set_turtle_log_level(log_level)
 
         # build worker list and executor tasks
-        try:
-            # distribute single task thru swarm
+        if isinstance(self.target, Callable):
+            # distribute single task to entire swarm
+            self.log.debug('received single task')
             for turtle in self.turtles:
-                __create_task(exec, self.target_func, turtle)
-        except:
-            # distribute individualized tasks
-            if not 'default' in self.target_dict:
+                __create_task(exec, self.target, turtle)
+        elif isinstance(self.target, dict):
+            # distribute tasks to specific turtles
+            self.log.debug('received target dictionary')
+            if not 'default' in self.target:
                 self.log.warning(
                     'no default function passed to turtleswarm, only specified turtle IDs will run'
                 )
             for turtle in self.turtles:
-                if turtle.t_id in self.target_dict:
-                    __create_task(exec, self.target_dict[turtle.t_id], turtle)
-                elif 'default' in self.target_dict:
-                    __create_task(exec, self.target_dict['default'], turtle)
-
-        else:
-            # this should not happen...
-            self.log.error('no target function or dict found!')
-            return False
+                if turtle.t_id in self.target:
+                    __create_task(exec, self.target[turtle.t_id], turtle)
+                elif 'default' in self.target:
+                    __create_task(exec, self.target['default'], turtle)
 
         # finally, run all the workers
         loop.run_until_complete(asyncio.gather(*turtle_workers.values()))
         self.log.info('all done!')
-        return True

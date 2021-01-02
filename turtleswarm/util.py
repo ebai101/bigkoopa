@@ -59,6 +59,58 @@ def refuel_from_chest(t: api.Turtle, item_count: int = 0) -> bool:
     return refuel_from_inventory(t)
 
 
+# excavates a hole but faster
+# uses dig_up and dig_down to move through 3-high chunks at a time
+def fast_excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
+
+    if dim[0] <= 0 or dim[1] <= 0 or dim[2] <= 0:
+        raise ValueError('dimensions must be nonzero positive numbers')
+
+    cur_depth = 0
+    y_delta = 1
+    should_stop = False
+    while not should_stop:
+
+        while y_delta < 3:
+            dd_res = t.dig_down()
+
+            if type(dd_res) == list:
+                if dd_res[1] == 'Unbreakable block detected':
+                    should_stop = True
+                    break
+                elif dd_res[1] == 'Nothing to dig here':
+                    t.down()
+                    y_delta += 1
+            else:
+                t.down()
+                y_delta += 1
+
+        t.dig_down()
+        for i in range(dim[2]):
+            for j in range(dim[0] - 1):
+                t.dig()
+                t.forward()
+                t.dig_up()
+                t.dig_down()
+            if i < dim[2] - 1:
+                t.turn(dir)
+                t.dig()
+                t.forward()
+                t.dig_up()
+                t.dig_down()
+                t.turn(dir)
+            else:
+                t.turn(not dir)
+            dir = not dir
+
+        # transform dimensions to deal with nonsquare holes
+        dim = (dim[2], dim[1], dim[0])
+        cur_depth += y_delta
+        y_delta = 0
+        if cur_depth >= dim[1]:
+            should_stop = True
+
+
 # excavates a hole of dim (x,y,z)
 # dir indicates which direction the turtle will turn (using TurtleAPI.turn()): left is False, right is True
 def excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
@@ -68,10 +120,13 @@ def excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
 
     cur_depth = 0
     while cur_depth < dim[1]:
-        if not t.dig_down():
-            break
-        else:
-            t.down()
+        dd_res = t.dig_down()
+
+        if type(dd_res) == list:
+            if dd_res[1] == 'Unbreakable block detected':
+                break
+            else:
+                t.down()
 
         for i in range(dim[2]):
             for j in range(dim[0] - 1):
