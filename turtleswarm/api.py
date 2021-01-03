@@ -10,6 +10,9 @@ from turtleswarm import tracking, error
 
 LEFT = False
 RIGHT = True
+TURTLE_BLOCK_IDS = [
+    'computercraft:turtle_normal', 'computercraft:turtle_advanced'
+]
 
 
 # class to manage a single turtle. contains wrappers for all of the lua turtle API functions,
@@ -127,9 +130,12 @@ class Turtle:
         # Counts how many remaining items you need to fill the stack in the currently selected slot or, if specified, slot_num slot
         return self.__turtle('getItemSpace', slot_num)
 
-    def get_item_detail(self, slot_num: int = None) -> dict:
+    def get_item_detail(self,
+                        slot_num: int = None,
+                        detailed: bool = None) -> dict:
         # Returns the ID string, count and damage values of currently selected slot or, if specified, slot_num slot
-        return self.__turtle('getItemDetail', slot_num)
+        # If detailed is provided, the method will contain more information at the cost of taking longer.
+        return self.__turtle('getItemDetail', slot_num, detailed)
 
     def equip_left(self) -> bool:
         # Attempts to equip an item in the current slot to the turtle's left side, switching the previously equipped item back into the inventory

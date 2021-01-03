@@ -1,6 +1,25 @@
 from turtleswarm import api
 
 
+# basic spawner function
+# chest goes on top of turtle, empty space goes below the turtle
+def spawner(t: api.Turtle):
+    turtle_slots = []
+    fuel_slots = []
+
+    [t.suck_up() for _ in range(16)]
+
+    for n in range(1, 17):
+        if t.get_item_count(n) > 0:
+            t.select(n)
+            if t.refuel(0) == True:
+                fuel_slots.append(n)
+            elif t.get_item_detail()['name'] in api.TURTLE_BLOCK_IDS:
+                turtle_slots.append(n)
+
+    t.get_item_detail(2, True)
+
+
 # attempts to refuel the turtle using objects from the turtle's inventory
 def refuel_from_inventory(t: api.Turtle, goal_fuel_count: int = 0) -> bool:
     init_fuel_count = t.get_fuel_level()
