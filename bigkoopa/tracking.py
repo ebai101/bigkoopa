@@ -1,6 +1,3 @@
-import turtleswarm
-
-
 # tracks a turtle's relative position in space. useful for performing fuel calculations
 class TurtleTracker:
 
