@@ -81,7 +81,10 @@ def refuel_from_chest(t: api.Turtle, item_count: int = 0) -> bool:
 # excavates a hole of dimensions (x,y,z), but quickly
 # uses dig_up and dig_down to move through 3-high chunks at a time
 # ~50% more efficient than excavate()
-def excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
+def excavate(t: api.Turtle,
+             dim: tuple[int, int, int],
+             dir: bool,
+             droplist: list[str] = None):
 
     if dim[0] <= 0 or dim[1] <= 0 or dim[2] <= 0:
         raise ValueError('dimensions must be nonzero positive numbers')
@@ -107,7 +110,7 @@ def excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
 
         t.dig_down()
         for i in range(dim[2]):
-            for j in range(dim[0] - 1):
+            for _ in range(dim[0] - 1):
                 t.dig()
                 t.forward()
                 t.dig_up()
@@ -130,10 +133,22 @@ def excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
         if cur_depth >= dim[1]:
             should_stop = True
 
+        # purge items
+        if droplist:
+            dropped_items = purge_items(t, droplist)
+            t.log.info('purged items:')
+            [
+                t.log.info('%s: %d' % (key, dropped_items[key]))
+                for key in dropped_items.keys()
+            ]
+
 
 # excavates a hole of dim (x,y,z)
 # dir indicates which direction the turtle will turn (using TurtleAPI.turn()): left is False, right is True
-def slow_excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
+def slow_excavate(t: api.Turtle,
+                  dim: tuple[int, int, int],
+                  dir: bool,
+                  droplist: list[str] = None):
 
     if dim[0] <= 0 or dim[1] <= 0 or dim[2] <= 0:
         raise ValueError('dimensions must be nonzero positive numbers')
@@ -150,7 +165,7 @@ def slow_excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
             t.down()
 
         for i in range(dim[2]):
-            for j in range(dim[0] - 1):
+            for _ in range(dim[0] - 1):
                 t.dig()
                 t.forward()
             if i < dim[2] - 1:
@@ -166,11 +181,20 @@ def slow_excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
         dim = (dim[2], dim[1], dim[0])
         cur_depth += 1
 
+        # purge items
+        if droplist:
+            dropped_items = purge_items(t, droplist)
+            t.log.info('purged items:')
+            [
+                t.log.info('%s: %d' % (key, dropped_items[key]))
+                for key in dropped_items.keys()
+            ]
+
 
 # clears out a 3-high square cave (dim+1,dim). uses dig, dig_up and dig_down for improved speed
 # intended use is with 4 turtles to produce a cave with dimensions (2*dim+1,2*dim+1)
 # dir indicates which direction the turtle will turn, can be LEFT or RIGHT
-def clear_cave(t: api.Turtle, dim: int, dir: bool):
+def clear_cave(t: api.Turtle, dim: int, dir: bool, droplist: list[str] = None):
 
     if dim <= 0:
         raise ValueError('dim must be a nonzero positive number')
@@ -178,7 +202,7 @@ def clear_cave(t: api.Turtle, dim: int, dir: bool):
     t.dig_up()
     t.dig_down()
     for i in range(dim + 1):
-        for j in range(dim - 1):
+        for _ in range(dim - 1):
             t.dig()
             t.forward()
             t.dig_up()
@@ -193,10 +217,33 @@ def clear_cave(t: api.Turtle, dim: int, dir: bool):
         else:
             if not dim % 2:
                 t.turn_around()
-                [t.forward() for k in range(dim - 1)]
+                [t.forward() for _ in range(dim - 1)]
             else:
                 dir = not dir
             t.turn(dir)
-            [t.forward() for k in range(dim)]
+            [t.forward() for _ in range(dim)]
             t.turn(dir)
         dir = not dir
+
+        if droplist:
+            dropped_items = purge_items(t, droplist)
+            t.log.info('purged items:')
+            [
+                t.log.info('%s: %d' % (key, dropped_items[key]))
+                for key in dropped_items.keys()
+            ]
+
+
+# purge all items that are found in item_list from the turtle's inventory
+def purge_items(t: api.Turtle, item_list: list[str]):
+    dropped_items = {}
+    for slot in range(1, 17):
+        item = t.get_item_detail(slot)
+        if len(item) > 0 and item['name'] in item_list:
+            t.select(slot)
+            t.drop_down()
+            if not item['name'] in dropped_items:
+                dropped_items[item['name']] = 1
+            else:
+                dropped_items[item['name']] += 1
+    return dropped_items
