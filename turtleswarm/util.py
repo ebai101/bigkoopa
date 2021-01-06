@@ -78,9 +78,10 @@ def refuel_from_chest(t: api.Turtle, item_count: int = 0) -> bool:
     return refuel_from_inventory(t)
 
 
-# excavates a hole but faster
+# excavates a hole of dimensions (x,y,z), but quickly
 # uses dig_up and dig_down to move through 3-high chunks at a time
-def fast_excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
+# ~50% more efficient than excavate()
+def excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
 
     if dim[0] <= 0 or dim[1] <= 0 or dim[2] <= 0:
         raise ValueError('dimensions must be nonzero positive numbers')
@@ -132,7 +133,7 @@ def fast_excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
 
 # excavates a hole of dim (x,y,z)
 # dir indicates which direction the turtle will turn (using TurtleAPI.turn()): left is False, right is True
-def excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
+def slow_excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
 
     if dim[0] <= 0 or dim[1] <= 0 or dim[2] <= 0:
         raise ValueError('dimensions must be nonzero positive numbers')
@@ -141,11 +142,12 @@ def excavate(t: api.Turtle, dim: tuple[int, int, int], dir: bool):
     while cur_depth < dim[1]:
         dd_res = t.dig_down()
 
+        # stop if we hit bedrock, otherwise attempt to move down
         if type(dd_res) == list:
             if dd_res[1] == 'Unbreakable block detected':
                 break
-            else:
-                t.down()
+        else:
+            t.down()
 
         for i in range(dim[2]):
             for j in range(dim[0] - 1):
